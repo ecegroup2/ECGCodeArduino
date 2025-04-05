@@ -44,8 +44,6 @@ void ecgSetup(){
       Serial.println(F("highPassFilter memory not allocated!"));displayError();
   }
 //    Serial.flush();
-    pinMode(ECGA1, INPUT);
-    pinMode(ECGA2, INPUT);
     while(digitalRead(ECGBTN));
 }
 
@@ -113,14 +111,11 @@ void maxSetup(){
     if(!(redBuffer=(uint16_t*)malloc(sizeof(uint16_t)*BUFFERLENGTH))){
       Serial.println(F("redBuffer memory not allocated!"));displayError();
     }
-    pinMode(PULSELED, OUTPUT);
-    pinMode(READLED, OUTPUT);
 
     // Initialize sensor
     if (!particleSensor->begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
     {
       Serial.println(F("MAX30105 was not found. Please check wiring/power."));displayError();
-      while (1);
     }
 
 //    Serial.println(F("Attach sensor to finger with rubber band. Press any key to start conversion"));
@@ -194,11 +189,15 @@ void maxcleanUp(){
 
 void setup()
 {
-  Serial.begin(9600);
-  pinMode(MAXBTN,INPUT_PULLUP);
-  pinMode(MAXLED, OUTPUT);
-  pinMode(ECGLED, OUTPUT);
-  pinMode(ECGBTN, INPUT_PULLUP);
+  	Serial.begin(9600);
+  	pinMode(MAXBTN,INPUT_PULLUP);
+  	pinMode(MAXLED, OUTPUT);
+  	pinMode(ECGLED, OUTPUT);
+  	pinMode(ECGBTN, INPUT_PULLUP);
+    pinMode(PULSELED, OUTPUT);
+    pinMode(READLED, OUTPUT);
+    pinMode(ECGA1, INPUT);
+    pinMode(ECGA2, INPUT);
 }
 
 
