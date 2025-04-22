@@ -12,7 +12,7 @@ int32_t correct_spo2; //SPO2 value
 #define ECGBTN 4
 void displayError();
 
-class ECGNoiseFilter {
+class AdaptiveECGFilter {
 private:
     // Filter parameters
     float baselineLPF;      // Low-pass factor for baseline estimation
@@ -27,7 +27,7 @@ private:
     int spikeRecoveryCount; // Recovery counter after spike
 
 public:
-    ECGNoiseFilter(float baselineLPF = 0.05, float spikeThreshold = 50.0, float recoveryRate = 0.8) {
+    AdaptiveECGFilter(float baselineLPF = 0.05, float spikeThreshold = 50.0, float recoveryRate = 0.8) {
         this->baselineLPF = baselineLPF;
         this->spikeThreshold = spikeThreshold;
         this->recoveryRate = recoveryRate;
@@ -81,14 +81,14 @@ public:
         return output;
     }
 };
-
-ECGNoiseFilter *highPassFilter;
+AdaptiveECGFilter *highPassFilter;
 
 void ecgSetup(){
 
-    if(!(highPassFilter=new ECGNoiseFilter(0.1))){
+    if(!(highPassFilter=new AdaptiveECGFilter(0.1))){
       Serial.println(F("highPassFilter memory not allocated!"));displayError();
-  }
+    }
+
 //    Serial.flush();
     pinMode(ECGA1, INPUT);
     pinMode(ECGA2, INPUT);
@@ -107,7 +107,9 @@ void ecgDataCollect(){
         int rawValue = analogRead(A0);
         float filteredValue = highPassFilter->processValue(rawValue);
         if(i>(0+ECGOFFSET)){
-          Serial.println(filteredValue);
+//          Serial.print(rawValue);
+//          Serial.print(",");
+          Serial.println(filteredValue/10);
         }
 
     }
