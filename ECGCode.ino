@@ -1,6 +1,5 @@
 //install https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library library first
 
-
 int32_t correct_heartRate; //Heartrate value
 int32_t correct_spo2; //SPO2 value
 
@@ -12,57 +11,107 @@ int32_t correct_spo2; //SPO2 value
 #define ECGLED 8
 #define ECGBTN 4
 void displayError();
-class ECGNoiseFilter {
+
+class AdaptiveECGFilter {
 private:
-    float alpha;  // Smoothing factor for low-pass filter
-    float previousOutput;
-    float previousInput;
+    // Filter parameters
+    float baselineLPF;      // Low-pass factor for baseline estimation
+    float spikeThreshold;   // Threshold to detect spikes
+    float recoveryRate;     // Rate at which filter recovers after spikes
+
+    // Filter state variables
+    float baseline;         // Current baseline estimate
+    float lastValue;        // Previous input value
+    float lastOutput;       // Previous output value
+    bool spikeDetected;     // Spike detection flag
+    int spikeRecoveryCount; // Recovery counter after spike
 
 public:
-    // Constructor
-    ECGNoiseFilter(float alpha = 0.1) {
-        this->alpha = alpha;
-        this->previousOutput = 0.0;
-        this->previousInput = 0.0;
+    AdaptiveECGFilter(float baselineLPF = 0.05, float spikeThreshold = 50.0, float recoveryRate = 0.8) {
+        this->baselineLPF = baselineLPF;
+        this->spikeThreshold = spikeThreshold;
+        this->recoveryRate = recoveryRate;
+
+        // Initialize state
+        baseline = 0.0;
+        lastValue = 0.0;
+        lastOutput = 0.0;
+        spikeDetected = false;
+        spikeRecoveryCount = 0;
     }
 
-    // Apply high-pass filter to remove baseline wander
-    float applyHighPassFilter(float rawValue) {
-        float filteredValue = alpha * (previousOutput + rawValue - previousInput);
-        previousInput = rawValue;
-        previousOutput = filteredValue;
-        return filteredValue;
+    float processValue(float input) {
+        // Calculate derivative to detect rapid changes
+        float derivative = input - lastValue;
+
+        // Spike detection
+        if (abs(derivative) > spikeThreshold) {
+            spikeDetected = true;
+            spikeRecoveryCount = 5; // Number of samples for recovery phase
+        }
+
+        // Baseline adaptation - slower during spikes, faster during normal segments
+        float adaptRate = spikeDetected ? baselineLPF * 0.1 : baselineLPF;
+        baseline = baseline * (1.0 - adaptRate) + input * adaptRate;
+
+        // Gradually reduce spike detection flag
+        if (spikeRecoveryCount > 0) {
+            spikeRecoveryCount--;
+        } else {
+            spikeDetected = false;
+        }
+
+        // Remove baseline from signal
+        float centered = input - baseline;
+
+        // Smooth transitions after spikes
+        float output;
+        if (spikeDetected) {
+            // During spikes, use limited filtering
+            output = centered;
+        } else {
+            // Normal filtering - blend with previous output for smoothness
+            output = centered * (1 - recoveryRate) + lastOutput * recoveryRate;
+        }
+
+        // Update state
+        lastValue = input;
+        lastOutput = output;
+
+        return output;
     }
 };
-
-
-ECGNoiseFilter *highPassFilter;
+AdaptiveECGFilter *highPassFilter;
 
 void ecgSetup(){
 
-    if(!(highPassFilter=new ECGNoiseFilter(0.1))){
+    if(!(highPassFilter=new AdaptiveECGFilter(0.1))){
       Serial.println(F("highPassFilter memory not allocated!"));displayError();
-  }
+    }
+
 //    Serial.flush();
     pinMode(ECGA1, INPUT);
     pinMode(ECGA2, INPUT);
     while(digitalRead(ECGBTN));
 }
 
-
+#define ECGOFFSET 50
 void ecgDataCollect(){
   digitalWrite(ECGLED,HIGH);
   Serial.print(correct_heartRate);
   Serial.print(F(","));
   Serial.println(correct_spo2);
-  for(uint16_t i=0;i<500;i++){
-    if(i>=500) i--;
-    else if ((digitalRead(ECGA1) == 1) || (digitalRead(ECGA2) == 1))i--;
+  for(uint16_t i=0;i<500+ECGOFFSET;i++){
+    if ((digitalRead(ECGA1) == 1) || (digitalRead(ECGA2) == 1))i--;
     else {
         int rawValue = analogRead(A0);
-        float filteredValue = highPassFilter->applyHighPassFilter(rawValue);
-        if(i>0)
-          Serial.println(filteredValue);
+        float filteredValue = highPassFilter->processValue(rawValue);
+        if(i>(0+ECGOFFSET)){
+//          Serial.print(rawValue);
+//          Serial.print(",");
+          Serial.println(filteredValue/10);
+        }
+
     }
     delay(20);
   }
