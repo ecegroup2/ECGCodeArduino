@@ -416,6 +416,7 @@ void heartratecalc() {
   digitalWrite(MAXLED, LOW);
   free(particleSensor);
   free(rates);
+  free(heartrate);
 }
 
 void setup() {
