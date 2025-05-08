@@ -272,7 +272,7 @@ private:
   int16_t negativeEdge = 0;
   int32_t ir_avg_reg = 0;
   bool beatDetected = false;
-  static const uint16_t FIRCoeffs[12] = {172,  321,  579,  927,  1360, 1858,
+  const uint16_t FIRCoeffs[12] = {172,  321,  579,  927,  1360, 1858,
                                          2390, 2916, 3391, 3768, 4012, 4096};
   int16_t averageDCEstimator(int32_t *p, uint16_t x) {
     *p += ((((long)x << 15) - *p) >> 4);
@@ -412,7 +412,7 @@ void heartratecalc() {
     if (irValue < 50000)
       displayError();
   }
-  correct_heartRate = beatAvg;
+  correct_heartRate = beatAvg*1.70;
   digitalWrite(MAXLED, LOW);
   free(particleSensor);
   free(rates);
@@ -429,7 +429,7 @@ void setup() {
 
 void loop() {
   spo2calc();
-  //  heartratecalc();
+  heartratecalc();
   ecgSetup();
   ecgDataCollect();
   ecgCleanup();
